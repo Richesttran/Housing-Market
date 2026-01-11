@@ -1,12 +1,12 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const {ImportCSV}= require("./ImportCSV")
-require("dotenv").config();
-
+import { MongoClient, ServerApiVersion } from "mongodb";
+import { ImportCSV } from "./ImportCSV.js";
+import dotenv from "dotenv";
+import express from "express";
+dotenv.config();
 
 const API_USERNAME = process.env.API_USERNAME;
 const API_PASSWORD = process.env.API_PASSWORD;
 const PORT =process.env.PORT;
-const express = require("express");
 const app= express();
 const uri = `mongodb+srv://${API_USERNAME}:${API_PASSWORD}@housing.brudlsz.mongodb.net/?appName=Housing`;
 let connected="not connected"
@@ -20,7 +20,7 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-async function run() {
+async function connectDB() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
@@ -28,17 +28,29 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
     connected="connected"
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
-  }
+  } catch (err)
+  {  connected= err}
 }
-async function seed()
+
+async function insertData(data)
 {
 
-    const housingDataList= []
-    housingDataList= ImportCSV("HousingData.csv")
 
+  try{
+      await client.connect();
+      //get cluster
+      const db = client.db("Housing")
+      // get colleciton
+      const collection= db.collection("HousingHistory")
+      //insert or seed data into the collection
+      const result = await collection.insertMany(data);
+      console.log(`Inserted Data ${result.insertedCount}`)
+    }
+    catch(err)
+    {
+      console.error(err)
+        }
+    
 };
 app.get("/",(req,res)=> {
     res.send(`MONGO DB Server is... ${connected}`);
@@ -53,5 +65,15 @@ app.listen(PORT,()=>{
     console.log(`Server running on http://localhost:${PORT}`);
 });
 
-
-seed().catch(console.dir);
+try{
+  const housingDataList=  await ImportCSV("HousingData.csv")
+  console.log("connecting to DB")
+  await connectDB().catch(console.dir);
+  console.log("Inserting Data...")
+  await insertData(housingDataList).catch(console.dir);
+  console.log("finished")
+}catch (err){
+  console.error(err);
+}finally{
+  await client.close();
+} 
