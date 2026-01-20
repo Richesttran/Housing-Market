@@ -27,7 +27,7 @@ app.listen(PORT,()=>{
 });
 try {
 //recieve data from the the server
-const data=readData();
+const data=await readData();// should probably store the file somewhere as a csv or something so we arent required to call the mongodb server everytime the server boots up 
 
 }
 catch(err)
